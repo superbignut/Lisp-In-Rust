@@ -1,4 +1,4 @@
-use std::{collections::HashMap, num::ParseFloatError};
+use std::{arch::x86_64, collections::HashMap, num::ParseFloatError};
 
 // Varibale type.
 #[derive(Clone)]
@@ -6,6 +6,7 @@ enum RispExp {
     Symbol(String),
     Number(f64),
     List(Vec<RispExp>),
+    Func(fn(&[RispExp]) -> Result<RispExp, RispErr>),
 }
 
 // Error type.
@@ -68,20 +69,52 @@ fn parse_atom(token: &str) -> RispExp {
     }
 }
 
-fn main() {
-    let tokens = tokenize(String::from("(+ 10 5)"));
+fn default_env() -> RispEnv {
+    let mut data: HashMap<String, RispExp> = HashMap::new();
+    data.insert(
+        "+".to_string(),
+        RispExp::Func(|args: &[RispExp]| -> Result<RispExp, RispErr> {
+            let sum = parse_list_of_floats(args)?
+                .iter()
+                .fold(0.0, |sum, a| sum + a);
+            Ok(RispExp::Number(sum))
+        }),
+    );
+    data.insert(
+        "-".to_string(),
+        RispExp::Func(|args| {
+            let floats = parse_list_of_floats(args)?;
+            let first_num = floats
+                .first()
+                .ok_or(RispErr::Reason("expecteed at least one number".to_string()))?;
+            let sum_of_rest = floats[1..].iter().fold(0.0, |sum, a| sum + a);
 
-    let mut x = [1, 2, 3];
+            Ok(RispExp::Number(first_num - sum_of_rest))
+        }),
+    );
 
-    let y = &mut x[..];
+    RispEnv { data }
+}
 
-    for n in y {
-        *n += 1;
-        println!("{}", n);
+fn parse_list_of_floats(args: &[RispExp]) -> Result<Vec<f64>, RispErr> {
+    args.iter().map(|x| parse_single_float(x)).collect()
+}
 
-        println!("{}", 1123);
+fn parse_single_float(exp: &RispExp) -> Result<f64, RispErr> {
+    match exp {
+        RispExp::Number(num) => Ok(*num),
+        _ => Err(RispErr::Reason("Expected a number".to_string())),
     }
 }
-//Todo: what is &[String], slice?
 
-//Todo:
+fn main() {
+    let tokens = tokenize(String::from("(+ 10 5)"));
+    let (risp, rest) = parse(&tokens).unwrap();
+    println!("{}", rest.len());
+
+    let test1 = RispExp::Number(123f64);
+    let test2 = RispExp::Number(123f64);
+    let test3 = RispExp::Number(123f64);
+
+    let newt = &[test1, test2, test3];
+}
