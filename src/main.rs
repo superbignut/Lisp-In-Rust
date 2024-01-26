@@ -1,4 +1,4 @@
-use std::{arch::x86_64, collections::HashMap, num::ParseFloatError};
+use std::{arch::x86_64, ascii::AsciiExt, collections::HashMap, num::ParseFloatError};
 
 // Varibale type.
 #[derive(Clone)]
@@ -77,6 +77,7 @@ fn default_env() -> RispEnv {
             let sum = parse_list_of_floats(args)?
                 .iter()
                 .fold(0.0, |sum, a| sum + a);
+
             Ok(RispExp::Number(sum))
         }),
     );
@@ -107,6 +108,24 @@ fn parse_single_float(exp: &RispExp) -> Result<f64, RispErr> {
     }
 }
 
+fn eval(exp: &RispExp, env: &mut RispEnv) -> Result<RispExp, RispErr> {
+    match exp {
+        RispExp::Symbol(k) => env
+            .data
+            .get(k)
+            .ok_or(RispErr::Reason(format!("unexpected symbol k='{}'", k)))
+            .map(|x| x.clone()),
+
+        RispExp::Number(_a) => Ok(exp.clone()),
+        RispExp::List(list) => {
+            todo!()
+        }
+        RispExp::Func(_) => Err(RispErr::Reason("unexpected form".to_string())),
+    };
+
+    todo!()
+}
+
 fn main() {
     let tokens = tokenize(String::from("(+ 10 5)"));
     let (risp, rest) = parse(&tokens).unwrap();
@@ -117,4 +136,13 @@ fn main() {
     let test3 = RispExp::Number(123f64);
 
     let newt = &[test1, test2, test3];
+
+    let ans = newt.iter();
+
+    let sum = parse_list_of_floats(newt).unwrap();
+    println!("{:?}", sum);
+
+    let a: Result<i32, &str> = Err(":aaa");
+
+    let b = a.map(|x| x + 1).unwrap();
 }
