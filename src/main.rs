@@ -1,4 +1,5 @@
-use std::{arch::x86_64, ascii::AsciiExt, collections::HashMap, num::ParseFloatError};
+use core::fmt;
+use std::{collections::HashMap, num::ParseFloatError};
 
 // Varibale type.
 #[derive(Clone)]
@@ -118,31 +119,47 @@ fn eval(exp: &RispExp, env: &mut RispEnv) -> Result<RispExp, RispErr> {
 
         RispExp::Number(_a) => Ok(exp.clone()),
         RispExp::List(list) => {
-            todo!()
+            let first_form = list
+                .first()
+                .ok_or(RispErr::Reason("require a non-empty list".to_string()))?;
+
+            let arg_forms = &list[1..];
+
+            let first_eval = eval(first_form, env)?;
+
+            match first_eval {
+                RispExp::Func(f) => {
+                    let args_eval = arg_forms
+                        .iter()
+                        .map(|x| eval(x, env))
+                        .collect::<Result<Vec<RispExp>, RispErr>>();
+                    f(&args_eval?)
+                }
+                _ => Err(RispErr::Reason(
+                    "first form must be a function.".to_string(),
+                )),
+            }
         }
         RispExp::Func(_) => Err(RispErr::Reason("unexpected form".to_string())),
-    };
-
-    todo!()
+    }
 }
-
+impl fmt::Display for RispExp {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        todo!()
+    }
+}
 fn main() {
-    let tokens = tokenize(String::from("(+ 10 5)"));
+    let tokens = tokenize(String::from("(+ 10 (- 10 10))"));
     let (risp, rest) = parse(&tokens).unwrap();
-    println!("{}", rest.len());
+    let mut env = default_env();
+    let ans = eval(&risp, &mut env).unwrap();
+    match ans {
+        RispExp::Number(x) => {
+            println!("{x}");
+        }
 
-    let test1 = RispExp::Number(123f64);
-    let test2 = RispExp::Number(123f64);
-    let test3 = RispExp::Number(123f64);
-
-    let newt = &[test1, test2, test3];
-
-    let ans = newt.iter();
-
-    let sum = parse_list_of_floats(newt).unwrap();
-    println!("{:?}", sum);
-
-    let a: Result<i32, &str> = Err(":aaa");
-
-    let b = a.map(|x| x + 1).unwrap();
+        _ => {
+            println!("err");
+        }
+    }
 }
