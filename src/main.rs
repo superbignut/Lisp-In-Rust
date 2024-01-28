@@ -1,5 +1,5 @@
 use core::fmt;
-use std::{collections::HashMap, num::ParseFloatError};
+use std::{collections::HashMap, io, num::ParseFloatError};
 
 // Varibale type.
 #[derive(Clone)]
@@ -20,6 +20,21 @@ enum RispErr {
 #[derive(Clone)]
 struct RispEnv {
     data: HashMap<String, RispExp>,
+}
+
+impl fmt::Display for RispExp {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let my_str = match self {
+            RispExp::Symbol(s) => s.clone(),
+            RispExp::Number(n) => n.to_string(),
+            RispExp::List(list) => {
+                let xs: Vec<String> = list.iter().map(|x| x.to_string()).collect();
+                format!("({})", xs.join(","))
+            }
+            &RispExp::Func(_) => "Function{}".to_string(),
+        };
+        write!(f, "{}", my_str)
+    }
 }
 
 fn tokenize(expr: String) -> Vec<String> {
@@ -143,23 +158,32 @@ fn eval(exp: &RispExp, env: &mut RispEnv) -> Result<RispExp, RispErr> {
         RispExp::Func(_) => Err(RispErr::Reason("unexpected form".to_string())),
     }
 }
-impl fmt::Display for RispExp {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        todo!()
-    }
-}
-fn main() {
-    let tokens = tokenize(String::from("(+ 10 (- 10 10))"));
-    let (risp, rest) = parse(&tokens).unwrap();
-    let mut env = default_env();
-    let ans = eval(&risp, &mut env).unwrap();
-    match ans {
-        RispExp::Number(x) => {
-            println!("{x}");
-        }
 
-        _ => {
-            println!("err");
+fn parse_eval(expr: String, env: &mut RispEnv) -> Result<RispExp, RispErr> {
+    let (parse_exp, _) = parse(&tokenize(expr))?;
+    let evaled_exp = eval(&parse_exp, env)?;
+    Ok(evaled_exp)
+}
+
+fn slurp_expr() -> String {
+    let mut expr = String::new();
+    io::stdin()
+        .read_line(&mut expr)
+        .expect("Failed to read line");
+    expr
+}
+
+fn main() {
+    let env = &mut default_env();
+    loop {
+        println!("risp >");
+        let expr = slurp_expr();
+
+        match parse_eval(expr, env) {
+            Ok(res) => println!("Answer is {}", res),
+            Err(e) => match e {
+                RispErr::Reason(msg) => println!("Error reason is {}", msg),
+            },
         }
     }
 }
